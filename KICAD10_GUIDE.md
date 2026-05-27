@@ -591,6 +591,22 @@ Para a **mesma largura**, aceitar mais aquecimento permite passar mais corrente.
 
 ---
 
+## Plugins Úteis (comunidade)
+
+Instale via **Tools → Plugin and Content Manager (PCM)** dentro do KiCad.
+
+| Plugin | Finalidade |
+|---|---|
+| **Interactive HTML BOM** | Gera um arquivo HTML único com BOM + layout interativo da PCB. Clique em um componente na lista para destacá-lo no layout. Essencial para montagem manual e para compartilhar com terceiros. |
+| **KiKit** | Panelização de placas (regulares e formatos irregulares), exportação automática de arquivos de fabricação e geração de páginas de apresentação do projeto. Tem CLI e plugin gráfico. |
+| **JLC KiCad Tools** | Gera BOM e arquivo de posicionamento (pick-and-place) no formato exato exigido pelo serviço de montagem da JLCPCB. |
+| **HQDFM** (NextPCB) | Análise de DFM dentro do KiCad — detecta mais de 20 tipos de problema (espaçamentos, trilhas finas, circuitos abertos, problemas em pads) antes de enviar para fabricação. |
+| **KiBoM** | Geração de BOM configurável com agrupamento inteligente por valor/footprint. |
+| **KiCost** | Gera planilha de custo com preços de múltiplos fornecedores. |
+| **RF-Tools for KiCAD** | Arredondamento de cantos de trilhas, cálculo de comprimento, via fencing e expansão de solder mask. Útil para USB, RF e sinais de alta velocidade. |
+
+---
+
 ## Recursos de Estudo
 
 - **Documentação oficial**: [docs.kicad.org](https://docs.kicad.org)
