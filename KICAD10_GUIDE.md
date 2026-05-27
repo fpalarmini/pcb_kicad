@@ -14,6 +14,8 @@
 6. [Tips & Tricks](#6-tips--tricks)
 7. [Footprint & Symbol Libraries](#7-footprint--symbol-libraries)
 8. [Gerber & Fabricação](#8-gerber--fabricação)
+9. [Tenting de Vias](#tenting-de-vias)
+10. [Trilhas — Largura e Corrente](#trilhas--largura-e-corrente)
 
 ---
 
@@ -432,6 +434,160 @@ Gera arquivo `.csv` com posição X/Y e rotação de cada componente SMD.
 - [ ] Layers corretos no Gerber
 - [ ] Drill file incluído
 - [ ] Visualizar no Gerber Viewer da fabricante (JLCPCB, PCBWay têm viewers online)
+
+---
+
+## Tenting de Vias
+
+### O que é tenting
+
+**Tenting** (ou "tamponamento") é a cobertura de vias pela **máscara de solda (solder mask)**, protegendo o anel de cobre (annular ring) e o furo da via. Sem tenting, o anel metálico fica exposto na superfície da placa.
+
+```
+Com tenting:          Sem tenting:
+┌─────────────┐       ┌─────────────┐
+│ ░░░[via]░░░ │       │    [via]    │
+│ solder mask │       │ anel exposto│
+└─────────────┘       └─────────────┘
+```
+
+### Para que é usado
+
+| Situação | Usar tenting? |
+|---|---|
+| Vias de sinal passando por baixo de componentes | Sim — evita curto |
+| Vias próximas de pads SMD | Sim — evita ponte de solda |
+| Ambiente úmido ou sujeito a contaminação | Sim — proteção contra oxidação |
+| Via usada como **test point** (ponto de prova) | Não — precisa acesso de sonda |
+| **Thermal via** (dissipação de calor) | Não — precisa contato térmico direto |
+| Via preenchida com epóxi condutor (plugged) | Não — processo diferente |
+
+### Como configurar no KiCad 10
+
+#### Por via (individual)
+
+1. Clique duplo na via (ou `E` com ela selecionada) → **Via Properties**
+2. Aba **Solder Mask**:
+   - `Tented` → **Front** e/ou **Back**
+   - Marque os lados que deseja cobrir
+
+#### Globalmente (todas as vias)
+
+`File → Board Setup → Design Rules → Solder Mask`
+- Campo **"Tenting"**: define o padrão para novas vias
+- Opções: `Front`, `Back`, `Both`, `None`
+
+> No KiCad 10, a configuração global fica em **Board Setup → Board Finish → Vias → Tenting**.
+
+#### Verificar no DRC
+
+O DRC não valida tenting diretamente, mas um via sem tenting próximo de um pad SMD pode gerar alerta de clearance de solder mask — verifique em **File → Board Setup → Design Rules → Solder Mask Expansion**.
+
+### Arquivos afetados
+
+#### Arquivo de edição
+
+| Arquivo | O que armazena |
+|---|---|
+| `*.kicad_pcb` | Propriedade `tented` de cada via — é aqui que o KiCad salva a configuração |
+
+#### Arquivos de produção (Gerbers)
+
+A máscara de solda no Gerber define **aberturas** (onde a máscara é removida). Portanto:
+
+| Gerber | Via com tenting | Via sem tenting |
+|---|---|---|
+| `F.Mask.gbr` / `B.Mask.gbr` | **Sem abertura** → via coberta | **Com abertura** → anel exposto |
+| `F.Cu.gbr` / `B.Cu.gbr` | Anel de cobre presente (sempre) | Igual |
+| `*.drl` (Excellon) | Furo sempre presente | Igual |
+
+> **Regra:** se a via **não aparece como abertura** no arquivo de máscara, ela está tented. A fabricante interpretará isso como "cobrir com solder mask".
+
+### Confirmação com a fabricante
+
+Algumas fabricantes (JLCPCB, PCBWay) aplicam tenting por padrão em todas as vias, independente do Gerber, a menos que você especifique o contrário. Verifique a opção **"Via Covering"** no formulário de pedido:
+- `Tented` — coberta com solder mask
+- `Untented` — anel exposto
+- `Plugged` — preenchida com resina (custo adicional)
+- `Epoxy Filled + Capped` — via plana e coberta (HDI, custo alto)
+
+---
+
+## Trilhas — Largura e Corrente
+
+### Espessura de Trilha x Corrente Suportada
+
+Valores para **cobre 1oz/ft² (35µm)**, baseados na norma **IPC-2221**:
+
+#### Camada Externa
+
+| Largura (mm) | Largura (mil) | 10°C de elevação | 20°C de elevação |
+|:---:|:---:|:---:|:---:|
+| 0,1 mm | 4 mil | ~0,3 A | ~0,4 A |
+| 0,2 mm | 8 mil | ~0,5 A | ~0,7 A |
+| 0,3 mm | 12 mil | ~0,8 A | ~1,1 A |
+| 0,5 mm | 20 mil | ~1,1 A | ~1,6 A |
+| 0,8 mm | 31 mil | ~1,7 A | ~2,4 A |
+| 1,0 mm | 39 mil | ~2,0 A | ~2,8 A |
+| 1,5 mm | 59 mil | ~2,8 A | ~3,9 A |
+| 2,0 mm | 79 mil | ~3,5 A | ~5,0 A |
+| 2,5 mm | 98 mil | ~4,2 A | ~5,9 A |
+| 3,0 mm | 118 mil | ~5,0 A | ~7,0 A |
+
+> **Camada interna:** reduza a corrente em ~50% em relação à camada externa (menos dissipação de calor).
+>
+> **Cobre 2oz/ft² (70µm):** multiplique os valores por ~1,4x.
+
+### O que significa "elevação de temperatura"
+
+É o **aumento de temperatura da trilha em relação ao ambiente**, causado pelo efeito Joule (a resistência do cobre aquecendo com a passagem de corrente).
+
+**Exemplo:** ambiente a 25°C
+- Elevação de 10°C → trilha opera a **35°C**
+- Elevação de 20°C → trilha opera a **45°C**
+
+Para a **mesma largura**, aceitar mais aquecimento permite passar mais corrente. Exemplo com trilha de 1,0 mm:
+- 10°C de elevação → **2,0 A**
+- 20°C de elevação → **2,8 A**
+
+| Situação | Elevação recomendada |
+|---|---|
+| Gabinete fechado ou componentes sensíveis próximos | **10°C** — conservador |
+| Boa ventilação ou ao ar livre | **20°C** — aceitável |
+| Protótipo ou uso não crítico | até 30–40°C |
+
+> Use a coluna de **10°C** como referência segura. Se o ambiente já for quente (ex: perto de um dissipador ou dentro de um inversor), a trilha parte de uma temperatura mais alta — a margem se torna ainda mais importante.
+
+### Dicas sobre Trilhas
+
+**Largura mínima**
+- Sinal digital de baixa corrente: 0,15–0,2 mm é suficiente
+- Alimentação (VCC, GND): use no mínimo 0,5 mm; prefira planos de cobre
+
+**Comprimento e impedância**
+- Trilhas longas em alta frequência precisam de controle de impedância (50Ω é padrão para RF)
+- Para sinais de clock rápidos, mantenha trilhas curtas e longe de bordas da placa
+
+**Ângulos**
+- Evite ângulos de 90° — use 45° ou curvas arredondadas para reduzir reflexões em alta frequência e facilitar a fabricação
+
+**Pares diferenciais** (USB, HDMI, CAN)
+- Mantenha trilhas pareadas com mesma largura, espaçamento constante e comprimentos iguais (length matching)
+
+**Plano de GND**
+- Prefira um plano de GND contínuo ao invés de trilhas de retorno — reduz indutância e melhora imunidade a ruído
+- Evite cortar o plano de GND com trilhas que cruzam por baixo de sinais sensíveis
+
+**Vias**
+- Cada via adiciona ~1 nH de indutância — minimize vias em caminhos de alta corrente e RF
+- Use múltiplas vias em paralelo para correntes elevadas
+
+**Clearance (espaçamento mínimo)**
+- Verifique as regras da sua fabricante; o mínimo comum é 0,15–0,2 mm
+- Para alta tensão (>50V), use calculadoras de creepage e clearance (norma IPC-2221)
+
+**Curto-circuito e soldagem**
+- Trilhas muito finas próximas de pads SMD facilitam pontes de solda — respeite o clearance recomendado pelo fabricante
 
 ---
 
